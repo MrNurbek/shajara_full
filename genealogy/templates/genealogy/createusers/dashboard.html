@@ -1,0 +1,62 @@
+{% extends "genealogy/createusers/base.html" %}
+{% block title %}CreateUsers — shajara jadvali{% endblock %}
+{% block content %}
+<section class="cu-hero">
+  <div>
+    <h1>Shajara jadvali</h1>
+    <p>Shaxs ustiga bosing. Ochilgan sahifada er/xotin yoki farzand qo‘shiladi.</p>
+  </div>
+  <a class="cu-btn cu-btn-primary" href="{% url 'genealogy:createusers-person-create' %}">+ Yangi shaxs</a>
+</section>
+
+<section class="cu-stats">
+  <div><b>{{ people_count }}</b><span>Shaxs</span></div>
+  <div><b>{{ marriage_count }}</b><span>Nikoh</span></div>
+  <div><b>{{ parent_child_count }}</b><span>Farzand bog‘lanishi</span></div>
+  <div><b>{{ male_count }}</b><span>Erkak</span></div>
+  <div><b>{{ female_count }}</b><span>Ayol</span></div>
+</section>
+
+<form class="cu-search" method="get">
+  <input class="cu-input" type="search" name="q" value="{{ q }}" placeholder="Ism, familiya, kasb bo‘yicha qidirish">
+  <button class="cu-btn" type="submit">Qidirish</button>
+  {% if q %}<a class="cu-btn cu-btn-light" href="{% url 'genealogy:createusers-dashboard' %}">Tozalash</a>{% endif %}
+</form>
+
+<section class="cu-card">
+  <div class="cu-table-wrap">
+    <table class="cu-table">
+      <thead>
+        <tr>
+          <th>Shaxs</th>
+          <th>Jinsi</th>
+          <th>Yillar</th>
+          <th>Bog‘lanish</th>
+          <th>Amal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for person in page_obj.object_list %}
+          <tr>
+            <td><a class="cu-person-link" href="{% url 'genealogy:createusers-person-detail' person.id %}">{{ person.display_name }}</a></td>
+            <td>{{ person.get_gender_display }}</td>
+            <td>{% if person.birth_year %}{{ person.birth_year }}{% endif %}{% if person.death_year %}–{{ person.death_year }}{% endif %}</td>
+            <td>{{ person.parent_link_count }} ota-ona bog‘lanishi</td>
+            <td>
+              <a class="cu-mini-btn" href="{% url 'genealogy:createusers-add-spouse' person.id %}">Er/xotin</a>
+              <a class="cu-mini-btn" href="{% url 'genealogy:createusers-add-child' person.id %}">Farzand</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">Ma’lumot topilmadi.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="cu-pagination">
+    {% if page_obj.has_previous %}<a href="?q={{ q }}&page={{ page_obj.previous_page_number }}">Oldingi</a>{% endif %}
+    <span>{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?q={{ q }}&page={{ page_obj.next_page_number }}">Keyingi</a>{% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,163 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#244f3b">
+  <title>Oilaviy shajara</title>
+  <link rel="stylesheet" href="{% static 'genealogy/css/tree-modern.css' %}">
+</head>
+<body>
+  <main class="app-shell" aria-label="Oilaviy shajara sahifasi" data-can-edit="{% if can_edit_tree %}1{% else %}0{% endif %}">
+    <aside class="sidebar" aria-label="Ochiq ma’lumotlar paneli">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <div class="brand-text">
+          <strong>Shajara</strong>
+          <span>Oilaviy genealogiya</span>
+        </div>
+      </div>
+
+      <nav class="side-menu" aria-label="Sahifa bo‘limlari">
+        <a class="side-link active" href="#tree-map">Shajara daraxti</a>
+        <a class="side-link" href="#stats">Statistika</a>
+        <a class="side-link" href="#guide">Foydalanish tartibi</a>
+        <a class="side-link" href="#about">Loyiha haqida</a>
+      </nav>
+
+      <div class="side-card">
+        <span class="side-card-label">Ochiq statistika</span>
+        <strong>{{ people_count }}</strong>
+        <p>bazaga kiritilgan shaxslar soni</p>
+      </div>
+
+      <div class="side-mini-grid">
+        <div><b>{{ marriage_count }}</b><span>Nikoh</span></div>
+        <div><b>{{ link_count }}</b><span>Bog‘lanish</span></div>
+        <div><b>{{ photo_count }}</b><span>Rasm</span></div>
+        <div><b>{% if oldest_birth_year %}{{ oldest_birth_year|date:"Y" }}{% else %}—{% endif %}</b><span>Eng eski yil</span></div>
+      </div>
+
+      <div class="side-note">
+        <strong>Mobil boshqaruv</strong>
+        <span>Telefonda daraxtni bitta barmoq bilan suring, ikki barmoq bilan kattalashtiring yoki kichraytiring.</span>
+      </div>
+
+      {% if can_use_createusers %}
+        <div class="admin-panel-card">
+          <span>Superuser boshqaruvi</span>
+          <a href="/createusers/">CreateUsers panel</a>
+        </div>
+      {% endif %}
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar">
+        <div class="page-title">
+          <p class="eyebrow">Interaktiv genealogik xarita</p>
+          <h1>Oilaviy shajara</h1>
+          <p class="subtitle">Qarindoshlik aloqalarini ko‘ring, shaxs profilini oching va avlodlar izchilligini tahlil qiling.</p>
+        </div>
+
+        <div class="search-box" id="search-panel">
+          <input id="person-search" type="search" autocomplete="off" placeholder="Ism, familiya yoki kasb bo‘yicha qidirish">
+          <div id="search-results" class="search-results" hidden></div>
+        </div>
+
+        <nav class="toolbar" aria-label="Shajara boshqaruvlari">
+          <button id="pz-fit" type="button">Moslash</button>
+          <button id="pz-reset" type="button">Reset</button>
+          <button id="pz-zoom-out" type="button" aria-label="Kichraytirish">−</button>
+          <span id="pz-scale" class="scale" aria-live="polite">100%</span>
+          <button id="pz-zoom-in" type="button" aria-label="Kattalashtirish">+</button>
+          <button type="button" class="fullscreen-btn toolbar-fullscreen" data-tree-fullscreen aria-label="Shajara xaritasini to‘liq ekranda ochish">⛶ Xaritani kattalashtirish</button>
+          {% if can_edit_tree %}
+            <button id="add-person-btn" type="button" class="add-button">+ Shaxs</button>
+          {% endif %}
+        </nav>
+      </header>
+
+      <section id="stats" class="stats-grid" aria-label="Shajara statistikasi">
+        <article class="stat-card"><span>Jami shaxslar</span><strong>{{ people_count }}</strong><small>bazadagi umumiy profil</small></article>
+        <article class="stat-card"><span>Nikohlar</span><strong>{{ marriage_count }}</strong><small>kanonik juftliklar</small></article>
+        <article class="stat-card"><span>Farzand bog‘lanishlari</span><strong>{{ link_count }}</strong><small>ota-ona va farzand aloqalari</small></article>
+        <article class="stat-card"><span>Erkaklar</span><strong>{{ male_count }}</strong><small>erkak profillar</small></article>
+        <article class="stat-card"><span>Ayollar</span><strong>{{ female_count }}</strong><small>ayol profillar</small></article>
+        <article class="stat-card"><span>Vafot etganlar</span><strong>{{ deceased_count }}</strong><small>xotira belgisi bilan</small></article>
+      </section>
+
+      <section id="about" class="info-strip" aria-label="Loyiha haqida qisqa ma’lumot">
+        <article>
+          <b>Ochiq ko‘rish rejimi</b>
+          <span>Oddiy foydalanuvchi admin panelga yo‘naltirilmaydi; u faqat shajara, qidiruv va profil ma’lumotlarini ko‘radi.</span>
+        </article>
+        <article>
+          <b>Profil oynasi</b>
+          <span>Har bir kartani bosganda shaxsning tug‘ilgan yili, kasbi, ota-onasi, turmush o‘rtog‘i va farzandlari ko‘rinadi.</span>
+        </article>
+        <article id="guide">
+          <b>Qulay boshqaruv</b>
+          <span>Kompyuterda Ctrl + mouse wheel, telefonda pinch zoom, “Moslash” tugmasi bilan daraxtni markazga keltirish mumkin.</span>
+        </article>
+      </section>
+
+      <section id="tree-map" class="tree-card">
+        <div class="tree-card-head">
+          <div>
+            <h2>Shajara xaritasi</h2>
+            <p>Daraxtni suring, kattalashtiring va shaxs kartasini bosib profilni oching.</p>
+          </div>
+          <div class="tree-actions"><button type="button" class="fullscreen-btn" data-tree-fullscreen aria-label="Shajara xaritasini to‘liq ekranda ochish">⛶ To‘liq ekran</button><div class="touch-help">Pan / Zoom / Search</div></div>
+        </div>
+        <section id="pz-outer" class="pz-outer" aria-label="Shajara xaritasi">
+          <div id="pz-inner" class="pz-inner">
+            <div class="tree" role="tree">
+              {% include "genealogy/partials/tree_recursive.html" with node=forest only %}
+            </div>
+          </div>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <nav class="mobile-tabs" aria-label="Mobil tezkor navigatsiya">
+    <a href="#tree-map">Daraxt</a>
+    <a href="#search-panel">Qidiruv</a>
+    <a href="#stats">Statistika</a>
+    <a href="#guide">Qo‘llanma</a>
+  </nav>
+
+  <div id="person-modal-bg" class="modal-backdrop" aria-hidden="true">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="person-title">
+      <button class="modal-close" aria-label="Yopish" id="person-close">×</button>
+      <div id="person-modal-content"></div>
+    </section>
+  </div>
+
+  {% if can_edit_tree %}
+  <div id="form-modal-bg" class="modal-backdrop" aria-hidden="true">
+    <section class="modal form-modal" role="dialog" aria-modal="true" aria-labelledby="form-title">
+      <button class="modal-close" aria-label="Yopish" id="form-close">×</button>
+      <div id="form-modal-content"></div>
+    </section>
+  </div>
+  {% endif %}
+
+  <div id="image-lightbox-bg" class="image-lightbox-backdrop" aria-hidden="true">
+    <section class="image-lightbox" role="dialog" aria-modal="true" aria-label="Katta rasm ko‘rish oynasi">
+      <button class="image-lightbox-close" aria-label="Rasm oynasini yopish" id="image-lightbox-close">×</button>
+      <img id="image-lightbox-img" class="image-lightbox-img" alt="Katta rasm">
+      <div class="image-lightbox-footer">
+        <p id="image-lightbox-caption" class="image-lightbox-caption"></p>
+        <a id="image-lightbox-open-original" class="image-lightbox-link" target="_blank" rel="noopener">Asl rasmni yangi oynada ochish</a>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    window.SHJ_CAN_EDIT = {{ can_edit_tree|yesno:"true,false" }};
+  </script>
+  <script src="{% static 'genealogy/js/tree.js' %}" defer></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{% load static %}
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CreateUsers — kirish</title>
+  <link rel="stylesheet" href="{% static 'genealogy/css/createusers.css' %}">
+</head>
+<body class="cu-login-body">
+  <main class="cu-login-card">
+    <h1>CreateUsers</h1>
+    <p>Bu panelga faqat superuser kirishi mumkin. Django admin ishlatilmaydi.</p>
+    {% if messages %}
+      {% for message in messages %}<div class="cu-message cu-{{ message.tags }}">{{ message }}</div>{% endfor %}
+    {% endif %}
+    <form method="post" class="cu-form">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <label>Login</label>
+      <input class="cu-input" type="text" name="username" autofocus required>
+      <label>Parol</label>
+      <input class="cu-input" type="password" name="password" required>
+      <button class="cu-btn cu-btn-primary" type="submit">Kirish</button>
+    </form>
+  </main>
+</body>
+</html>

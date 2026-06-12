@@ -1,0 +1,43 @@
+{% extends "genealogy/createusers/base.html" %}
+{% block title %}{{ person.display_name }}{% endblock %}
+{% block content %}
+<section class="cu-profile">
+  <div class="cu-card cu-profile-main">
+    <h1>{{ person.display_name }}</h1>
+    <p class="cu-muted">{{ person.get_gender_display }}{% if person.birth_year %} · {{ person.birth_year }}{% endif %}{% if person.death_year %}–{{ person.death_year }}{% endif %}</p>
+    {% if person.occupation %}<p><b>Kasbi:</b> {{ person.occupation }}</p>{% endif %}
+    {% if person.birth_place %}<p><b>Tug‘ilgan joy:</b> {{ person.birth_place }}</p>{% endif %}
+    {% if person.biography %}<p>{{ person.biography }}</p>{% endif %}
+    <div class="cu-actions">
+      <a class="cu-btn cu-btn-primary" href="{% url 'genealogy:createusers-add-spouse' person.id %}">+ Er/xotin qo‘shish</a>
+      <a class="cu-btn cu-btn-primary" href="{% url 'genealogy:createusers-add-child' person.id %}">+ Farzand qo‘shish</a>
+      <a class="cu-btn" href="{% url 'genealogy:createusers-person-edit' person.id %}">Tahrirlash</a>
+    </div>
+  </div>
+
+  <div class="cu-card">
+    <h2>Ota-ona</h2>
+    <ul class="cu-list">
+      {% for parent in parents %}<li><a href="{% url 'genealogy:createusers-person-detail' parent.id %}">{{ parent.display_name }}</a></li>{% empty %}<li class="cu-muted">Kiritilmagan</li>{% endfor %}
+    </ul>
+  </div>
+
+  <div class="cu-card">
+    <h2>Er / xotin</h2>
+    <ul class="cu-list">
+      {% for spouse in spouses %}<li><a href="{% url 'genealogy:createusers-person-detail' spouse.id %}">{{ spouse.display_name }}</a></li>{% empty %}<li class="cu-muted">Kiritilmagan</li>{% endfor %}
+    </ul>
+  </div>
+
+  <div class="cu-card cu-wide">
+    <h2>Farzandlar</h2>
+    <div class="cu-children-grid">
+      {% for child in children %}
+        <a class="cu-child-card" href="{% url 'genealogy:createusers-person-detail' child.id %}">{{ child.display_name }}</a>
+      {% empty %}
+        <p class="cu-muted">Kiritilmagan</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

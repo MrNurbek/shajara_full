@@ -1,0 +1,23 @@
+{% extends "genealogy/createusers/base.html" %}
+{% block title %}Farzand qo‘shish{% endblock %}
+{% block content %}
+<section class="cu-card cu-form-card">
+  <h1>{{ person.display_name }} uchun farzand qo‘shish</h1>
+  <p class="cu-muted">Ikkinchi ota/ona tanlansa, tizim avval nikoh bog‘lanishini yaratadi, keyin farzandni shu nikohga ulaydi.</p>
+  <form method="post" class="cu-form-grid">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <label class="cu-field">
+        <span>{{ field.label }}</span>
+        {{ field }}
+        {% if field.errors %}<small class="cu-error">{{ field.errors|join:", " }}</small>{% endif %}
+      </label>
+    {% endfor %}
+    <div class="cu-actions">
+      <button class="cu-btn cu-btn-primary" type="submit">Farzandni bog‘lash</button>
+      <a class="cu-btn" href="{% url 'genealogy:createusers-person-detail' person.id %}">Bekor qilish</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
