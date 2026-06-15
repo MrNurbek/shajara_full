@@ -157,8 +157,29 @@ def build_from_marriage(
 
 
 def root_people() -> QuerySet[Person]:
-    child_ids = ParentChild.objects.values_list("child_id", flat=True)
-    return Person.objects.exclude(id__in=child_ids).order_by("last_name", "first_name", "middle_name")
+    child_ids = set(ParentChild.objects.values_list("child_id", flat=True))
+
+    # Ota-onasi yo‘q, lekin asosiy shajara ichidagi farzand bilan turmush qurgan
+    # shaxslar alohida root bo‘lmasligi kerak.
+    external_spouse_ids = set()
+
+    for spouse1_id, spouse2_id in Marriage.objects.values_list("spouse1_id", "spouse2_id"):
+        spouse1_is_child = spouse1_id in child_ids
+        spouse2_is_child = spouse2_id in child_ids
+
+        if spouse1_is_child and not spouse2_is_child:
+            external_spouse_ids.add(spouse2_id)
+
+        elif spouse2_is_child and not spouse1_is_child:
+            external_spouse_ids.add(spouse1_id)
+
+    excluded_ids = child_ids | external_spouse_ids
+
+    return (
+        Person.objects
+        .exclude(id__in=excluded_ids)
+        .order_by("last_name", "first_name", "middle_name")
+    )
 
 
 def build_forest_all_roots(max_depth: int = 50) -> dict[str, Any]:
