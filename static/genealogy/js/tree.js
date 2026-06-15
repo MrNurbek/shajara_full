@@ -30,8 +30,8 @@
   let scale = 1;
   let tx = 40;
   let ty = 40;
-  const minScale = 0.25;
-  const maxScale = 3;
+  const minScale = 0.06;
+  const maxScale = 3.5;
   const pointers = new Map();
   let panStart = null;
   let pinchStart = null;
@@ -56,14 +56,18 @@
     const tree = inner.querySelector(".tree"); if(!tree) return;
     const oldTransform = inner.style.transform;
     inner.style.transform = "translate(0px, 0px) scale(1)";
-    const natural = tree.getBoundingClientRect();
+    const naturalRect = tree.getBoundingClientRect();
+    const naturalWidth = Math.max(tree.scrollWidth, tree.offsetWidth, naturalRect.width, 1);
+    const naturalHeight = Math.max(tree.scrollHeight, tree.offsetHeight, naturalRect.height, 1);
     inner.style.transform = oldTransform;
-    const pad = outer.clientWidth < 600 ? 24 : 70;
-    const sx = (outer.clientWidth - pad) / Math.max(1, natural.width);
-    const sy = (outer.clientHeight - pad) / Math.max(1, natural.height);
+    const pad = outer.clientWidth < 600 ? 20 : 82;
+    const viewportWidth = Math.max(1, outer.clientWidth - pad);
+    const viewportHeight = Math.max(1, outer.clientHeight - pad);
+    const sx = viewportWidth / naturalWidth;
+    const sy = viewportHeight / naturalHeight;
     scale = clamp(Math.min(sx, sy), minScale, maxScale);
-    tx = (outer.clientWidth - natural.width * scale) / 2;
-    ty = (outer.clientHeight - natural.height * scale) / 2;
+    tx = (outer.clientWidth - naturalWidth * scale) / 2;
+    ty = Math.max(18, (outer.clientHeight - naturalHeight * scale) / 2);
     applyTransform();
   }
   function resetView(){ scale = 1; tx = 40; ty = 40; applyTransform(); }
@@ -74,7 +78,9 @@
     pointers.set(event.pointerId, event);
     try{ outer.setPointerCapture(event.pointerId); }catch(_e){}
     if(pointers.size === 1){
-      const canPan = event.pointerType === "touch" || event.pointerType === "pen" || spaceHeld || event.button === 1 || event.button === 2;
+      const interactive = event.target.closest(".person, button, input, a, select, textarea, [data-person]");
+      const blankLeftDrag = event.pointerType === "mouse" && event.button === 0 && !interactive;
+      const canPan = event.pointerType === "touch" || event.pointerType === "pen" || blankLeftDrag || spaceHeld || event.button === 1 || event.button === 2;
       if(canPan){ panStart = {clientX:event.clientX, clientY:event.clientY, tx, ty}; setGrabbing(true); event.preventDefault(); }
     } else if(pointers.size === 2){
       const [a,b] = [...pointers.values()]; const mid = midpoint(a,b);

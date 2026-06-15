@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 from django.db.models import Q, QuerySet
 
@@ -26,22 +27,36 @@ def marriages_of(person: Person) -> QuerySet[Marriage]:
     )
 
 
+def child_sort_key(person: Person) -> tuple[bool, date, str, str, str, str]:
+    """Farzandlarni yosh tartibida saralaydi: 1-farzand eng katta bo‘ladi.
+
+    Tug‘ilgan sanasi yo‘q farzandlar ism-familiyasi bo‘yicha oxirroqqa qo‘yiladi.
+    Bu tartib SQLite/PostgreSQL dagi NULL saralash farqiga bog‘lanib qolmaydi.
+    """
+    birth_date = person.birth_date or date.max
+    return (
+        person.birth_date is None,
+        birth_date,
+        person.last_name.lower(),
+        person.first_name.lower(),
+        person.middle_name.lower(),
+        str(person.id),
+    )
+
 def children_of_marriage(marriage: Marriage) -> list[Person]:
-    return [
+    children = [
         link.child
-        for link in marriage.child_links.select_related("child").order_by(
-            "child__birth_date", "child__last_name", "child__first_name"
-        )
+        for link in marriage.child_links.select_related("child").all()
     ]
+    return sorted(children, key=child_sort_key)
 
 
 def children_of_single_parent(parent: Person) -> list[Person]:
-    return [
+    children = [
         link.child
-        for link in parent.single_child_links.select_related("child").order_by(
-            "child__birth_date", "child__last_name", "child__first_name"
-        )
+        for link in parent.single_child_links.select_related("child").all()
     ]
+    return sorted(children, key=child_sort_key)
 
 
 def order_partners(partners: list[Person]) -> list[Person]:
@@ -86,15 +101,15 @@ def build_from_person(
         if marriage_node:
             node["children"].append(marriage_node)
 
-    for child in children_of_single_parent(person):
-        node["children"].append(
-            build_from_person(
-                child,
-                seen_marriages=seen_marriages,
-                person_path=next_path,
-                max_depth=max_depth - 1,
-            )
+    for birth_order, child in enumerate(children_of_single_parent(person), start=1):
+        child_node = build_from_person(
+            child,
+            seen_marriages=seen_marriages,
+            person_path=next_path,
+            max_depth=max_depth - 1,
         )
+        child_node["birth_order"] = birth_order
+        node["children"].append(child_node)
 
     return node
 
@@ -129,15 +144,15 @@ def build_from_marriage(
         return node
 
     next_path = {*person_path, *(str(partner.id) for partner in partners)}
-    for child in children_of_marriage(marriage):
-        node["children"].append(
-            build_from_person(
-                child,
-                seen_marriages=seen_marriages,
-                person_path=next_path,
-                max_depth=max_depth - 1,
-            )
+    for birth_order, child in enumerate(children_of_marriage(marriage), start=1):
+        child_node = build_from_person(
+            child,
+            seen_marriages=seen_marriages,
+            person_path=next_path,
+            max_depth=max_depth - 1,
         )
+        child_node["birth_order"] = birth_order
+        node["children"].append(child_node)
     return node
 
 

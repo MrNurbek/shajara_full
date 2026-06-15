@@ -9,7 +9,7 @@
 {% elif node.type == "union" %}
   <div class="union" aria-label="Nikoh bloki">
     {% for p in node.partners %}
-      <button class="person {% if p.gender == 'M' %}male{% elif p.gender == 'F' %}female{% else %}unknown{% endif %}{% if p.is_deceased %} deceased{% endif %}"
+      <button class="person spouse-card partner-{{ forloop.counter }} {% if p.gender == 'M' %}male{% elif p.gender == 'F' %}female{% else %}unknown{% endif %}{% if p.is_deceased %} deceased{% endif %}"
               type="button" data-id="{{ p.id }}" aria-label="{{ p.name }} profilini ochish">
         <span class="avatar-mini" aria-hidden="true">{{ p.name|first }}</span>
         <span class="name">{{ p.name }}</span>
@@ -30,6 +30,9 @@
       <button class="person {% if p.gender == 'M' %}male{% elif p.gender == 'F' %}female{% else %}unknown{% endif %}{% if p.is_deceased %} deceased{% endif %}"
               type="button" data-id="{{ p.id }}" aria-label="{{ p.name }} profilini ochish">
         <span class="avatar-mini" aria-hidden="true">{{ p.name|first }}</span>
+        {% if node.birth_order %}
+          <span class="child-order" aria-label="{{ node.birth_order }}-farzand" title="{{ node.birth_order }}-farzand">{{ node.birth_order }}</span>
+        {% endif %}
         <span class="name">{{ p.name }}</span>
         <span class="meta">{% if p.birth_year %}{{ p.birth_year }}{% endif %}–{% if p.death_year %}{{ p.death_year }}{% endif %}</span>
       </button>

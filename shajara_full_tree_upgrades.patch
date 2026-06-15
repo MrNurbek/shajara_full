@@ -1,0 +1,409 @@
+diff --git a/genealogy/services/tree_builder.py b/genealogy/services/tree_builder.py
+index 71b7cb9..treefix1 100644
+--- a/genealogy/services/tree_builder.py
++++ b/genealogy/services/tree_builder.py
+@@ -1,6 +1,7 @@
+ from __future__ import annotations
+ 
++from datetime import date
+ from typing import Any
+ from django.db.models import Q, QuerySet
+ 
+@@ -28,18 +29,30 @@ def marriages_of(person: Person) -> QuerySet[Marriage]:
+     )
+ 
+ 
++def child_sort_key(person: Person) -> tuple[bool, date, str, str, str, str]:
++    """Farzandlarni yosh tartibida saralaydi: 1-farzand eng katta bo‘ladi.
++
++    Tug‘ilgan sanasi yo‘q farzandlar ism-familiyasi bo‘yicha oxirroqqa qo‘yiladi.
++    Bu tartib SQLite/PostgreSQL dagi NULL saralash farqiga bog‘lanib qolmaydi.
++    """
++    birth_date = person.birth_date or date.max
++    return (
++        person.birth_date is None,
++        birth_date,
++        person.last_name.lower(),
++        person.first_name.lower(),
++        person.middle_name.lower(),
++        str(person.id),
++    )
++
++
+ def children_of_marriage(marriage: Marriage) -> list[Person]:
+-    return [
++    children = [
+         link.child
+-        for link in marriage.child_links.select_related("child").order_by(
+-            "child__birth_date", "child__last_name", "child__first_name"
+-        )
++        for link in marriage.child_links.select_related("child").all()
+     ]
++    return sorted(children, key=child_sort_key)
+ 
+ 
+ def children_of_single_parent(parent: Person) -> list[Person]:
+-    return [
++    children = [
+         link.child
+-        for link in parent.single_child_links.select_related("child").order_by(
+-            "child__birth_date", "child__last_name", "child__first_name"
+-        )
++        for link in parent.single_child_links.select_related("child").all()
+     ]
++    return sorted(children, key=child_sort_key)
+@@ -88,18 +101,21 @@ def build_from_person(
+             node["children"].append(marriage_node)
+ 
+-    for child in children_of_single_parent(person):
+-        node["children"].append(
+-            build_from_person(
+-                child,
+-                seen_marriages=seen_marriages,
+-                person_path=next_path,
+-                max_depth=max_depth - 1,
+-            )
++    for birth_order, child in enumerate(children_of_single_parent(person), start=1):
++        child_node = build_from_person(
++            child,
++            seen_marriages=seen_marriages,
++            person_path=next_path,
++            max_depth=max_depth - 1,
+         )
++        child_node["birth_order"] = birth_order
++        node["children"].append(child_node)
+ 
+     return node
+@@ -131,16 +147,18 @@ def build_from_marriage(
+ 
+     next_path = {*person_path, *(str(partner.id) for partner in partners)}
+-    for child in children_of_marriage(marriage):
+-        node["children"].append(
+-            build_from_person(
+-                child,
+-                seen_marriages=seen_marriages,
+-                person_path=next_path,
+-                max_depth=max_depth - 1,
+-            )
++    for birth_order, child in enumerate(children_of_marriage(marriage), start=1):
++        child_node = build_from_person(
++            child,
++            seen_marriages=seen_marriages,
++            person_path=next_path,
++            max_depth=max_depth - 1,
+         )
++        child_node["birth_order"] = birth_order
++        node["children"].append(child_node)
+     return node
+ 
+ diff --git a/templates/genealogy/tree.html b/templates/genealogy/tree.html
+index c3d564f..treefix1 100644
+--- a/templates/genealogy/tree.html
++++ b/templates/genealogy/tree.html
+@@ -9,6 +9,7 @@
+   <meta name="theme-color" content="#244f3b">
+   <title>Oilaviy shajara</title>
+   <link rel="stylesheet" href="{% static 'genealogy/css/tree-modern.css' %}">
++  <link rel="stylesheet" href="{% static 'genealogy/css/tree-map-upgrades.css' %}?v=20260615">
+ </head>
+ <body>
+   <main class="app-shell" aria-label="Oilaviy shajara sahifasi" data-can-edit="{% if can_edit_tree %}1{% else %}0{% endif %}">
+diff --git a/templates/genealogy/partials/tree_recursive.html b/templates/genealogy/partials/tree_recursive.html
+index b806fb9..treefix1 100644
+--- a/templates/genealogy/partials/tree_recursive.html
++++ b/templates/genealogy/partials/tree_recursive.html
+@@ -11,7 +11,7 @@
+ {% elif node.type == "union" %}
+   <div class="union" aria-label="Nikoh bloki">
+     {% for p in node.partners %}
+-      <button class="person {% if p.gender == 'M' %}male{% elif p.gender == 'F' %}female{% else %}unknown{% endif %}{% if p.is_deceased %} deceased{% endif %}"
++      <button class="person spouse-card partner-{{ forloop.counter }} {% if p.gender == 'M' %}male{% elif p.gender == 'F' %}female{% else %}unknown{% endif %}{% if p.is_deceased %} deceased{% endif %}"
+               type="button" data-id="{{ p.id }}" aria-label="{{ p.name }} profilini ochish">
+         <span class="avatar-mini" aria-hidden="true">{{ p.name|first }}</span>
+         <span class="name">{{ p.name }}</span>
+@@ -32,8 +32,11 @@
+       <button class="person {% if p.gender == 'M' %}male{% elif p.gender == 'F' %}female{% else %}unknown{% endif %}{% if p.is_deceased %} deceased{% endif %}"
+               type="button" data-id="{{ p.id }}" aria-label="{{ p.name }} profilini ochish">
+         <span class="avatar-mini" aria-hidden="true">{{ p.name|first }}</span>
++        {% if node.birth_order %}
++          <span class="child-order" aria-label="{{ node.birth_order }}-farzand" title="{{ node.birth_order }}-farzand">{{ node.birth_order }}</span>
++        {% endif %}
+         <span class="name">{{ p.name }}</span>
+         <span class="meta">{% if p.birth_year %}{{ p.birth_year }}{% endif %}–{% if p.death_year %}{{ p.death_year }}{% endif %}</span>
+       </button>
+     </div>
+diff --git a/static/genealogy/js/tree.js b/static/genealogy/js/tree.js
+index b607117..treefix1 100644
+--- a/static/genealogy/js/tree.js
++++ b/static/genealogy/js/tree.js
+@@ -32,8 +32,8 @@
+   let scale = 1;
+   let tx = 40;
+   let ty = 40;
+-  const minScale = 0.25;
+-  const maxScale = 3;
++  const minScale = 0.06;
++  const maxScale = 3.5;
+   const pointers = new Map();
+   let panStart = null;
+   let pinchStart = null;
+@@ -56,16 +56,27 @@
+   }
+   function fitToView(){
+     const tree = inner.querySelector(".tree"); if(!tree) return;
+     const oldTransform = inner.style.transform;
+     inner.style.transform = "translate(0px, 0px) scale(1)";
+-    const natural = tree.getBoundingClientRect();
++    const naturalRect = tree.getBoundingClientRect();
++    const naturalWidth = Math.max(tree.scrollWidth, tree.offsetWidth, naturalRect.width, 1);
++    const naturalHeight = Math.max(tree.scrollHeight, tree.offsetHeight, naturalRect.height, 1);
+     inner.style.transform = oldTransform;
+-    const pad = outer.clientWidth < 600 ? 24 : 70;
+-    const sx = (outer.clientWidth - pad) / Math.max(1, natural.width);
+-    const sy = (outer.clientHeight - pad) / Math.max(1, natural.height);
++    const pad = outer.clientWidth < 600 ? 20 : 82;
++    const viewportWidth = Math.max(1, outer.clientWidth - pad);
++    const viewportHeight = Math.max(1, outer.clientHeight - pad);
++    const sx = viewportWidth / naturalWidth;
++    const sy = viewportHeight / naturalHeight;
+     scale = clamp(Math.min(sx, sy), minScale, maxScale);
+-    tx = (outer.clientWidth - natural.width * scale) / 2;
+-    ty = (outer.clientHeight - natural.height * scale) / 2;
++    tx = (outer.clientWidth - naturalWidth * scale) / 2;
++    ty = Math.max(18, (outer.clientHeight - naturalHeight * scale) / 2);
+     applyTransform();
+   }
+@@ -76,8 +87,10 @@
+     pointers.set(event.pointerId, event);
+     try{ outer.setPointerCapture(event.pointerId); }catch(_e){}
+     if(pointers.size === 1){
+-      const canPan = event.pointerType === "touch" || event.pointerType === "pen" || spaceHeld || event.button === 1 || event.button === 2;
++      const interactive = event.target.closest(".person, button, input, a, select, textarea, [data-person]");
++      const blankLeftDrag = event.pointerType === "mouse" && event.button === 0 && !interactive;
++      const canPan = event.pointerType === "touch" || event.pointerType === "pen" || blankLeftDrag || spaceHeld || event.button === 1 || event.button === 2;
+       if(canPan){ panStart = {clientX:event.clientX, clientY:event.clientY, tx, ty}; setGrabbing(true); event.preventDefault(); }
+     } else if(pointers.size === 2){
+       const [a,b] = [...pointers.values()]; const mid = midpoint(a,b);
+diff --git a/static/genealogy/css/tree-map-upgrades.css b/static/genealogy/css/tree-map-upgrades.css
+new file mode 100644
+index 0000000..treefix1
+--- /dev/null
++++ b/static/genealogy/css/tree-map-upgrades.css
+@@ -0,0 +1,198 @@
++:root{
++  --tree-node-width:154px;
++  --tree-node-gap:14px;
++  --tree-branch-1:#2f6b4f;
++  --tree-branch-2:#c89b3c;
++  --tree-branch-3:#5b6ee1;
++  --tree-branch-4:#c05a8a;
++  --spouse-soft:#fff1f2;
++  --spouse-strong:#e11d48;
++}
++
++/* Katta shajara xaritasida float asosidagi chiziqlar siljib ketmasligi uchun
++   daraxt qatlamini flex sxemaga o‘tkazamiz. HTML rekursiyasi o‘zgarmaydi. */
++.tree{
++  min-width:max(920px, max-content);
++  padding:64px 72px 88px;
++  white-space:nowrap;
++}
++
++.tree ul{
++  position:relative;
++  display:flex;
++  justify-content:center;
++  align-items:flex-start;
++  gap:0;
++  width:max-content;
++  min-width:100%;
++  margin:0 auto;
++  padding:38px 0 0;
++}
++
++.tree > ul{
++  padding-top:0;
++}
++
++.tree li{
++  --branch-color:var(--line-strong);
++  position:relative;
++  float:none;
++  display:flex;
++  flex:0 0 auto;
++  flex-direction:column;
++  align-items:center;
++  min-width:calc(var(--tree-node-width) + var(--tree-node-gap) * 2);
++  list-style:none;
++  text-align:center;
++  padding:38px var(--tree-node-gap) 0;
++}
++
++.tree li::before,
++.tree li::after{
++  content:"";
++  position:absolute;
++  top:0;
++  width:50%;
++  height:38px;
++  border-top:2px solid var(--branch-color);
++  opacity:.86;
++}
++
++.tree li::before{
++  right:50%;
++}
++
++.tree li::after{
++  right:auto;
++  left:50%;
++  border-left:2px solid var(--branch-color);
++}
++
++.tree li:first-child::before,
++.tree li:last-child::after{
++  border:0;
++}
++
++.tree li:last-child::before{
++  border-right:2px solid var(--branch-color);
++  border-radius:0 14px 0 0;
++}
++
++.tree li:first-child::after{
++  border-radius:14px 0 0 0;
++}
++
++.tree li:only-child{
++  padding-top:0;
++}
++
++.tree li:only-child::before,
++.tree li:only-child::after,
++.tree > ul::before{
++  display:none;
++}
++
++.tree ul ul::before,
++.tree li > ul::before{
++  content:"";
++  position:absolute;
++  top:0;
++  left:50%;
++  width:0;
++  height:38px;
++  border-left:2px solid var(--branch-color);
++  opacity:.9;
++}
++
++.tree > ul > li{--branch-color:var(--tree-branch-1)}
++.tree > ul > li > ul > li{--branch-color:var(--tree-branch-2)}
++.tree > ul > li > ul > li > ul > li{--branch-color:var(--tree-branch-3)}
++.tree > ul > li > ul > li > ul > li > ul > li{--branch-color:var(--tree-branch-4)}
++.tree > ul > li > ul > li > ul > li > ul > li > ul > li{--branch-color:var(--tree-branch-1)}
++
++.tree li:nth-child(4n+1){--branch-color:var(--tree-branch-1)}
++.tree li:nth-child(4n+2){--branch-color:var(--tree-branch-2)}
++.tree li:nth-child(4n+3){--branch-color:var(--tree-branch-3)}
++.tree li:nth-child(4n+4){--branch-color:var(--tree-branch-4)}
++
++.union{
++  isolation:isolate;
++  border-color:rgba(47,107,79,.16);
++  background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(255,253,247,.86));
++}
++
++.union::before{
++  width:34px;
++  height:3px;
++  border-radius:999px;
++  background:linear-gradient(90deg,var(--tree-branch-1),var(--gold));
++}
++
++.union:not(.single)::after{
++  content:"Nikoh";
++  position:absolute;
++  left:50%;
++  bottom:-11px;
++  transform:translateX(-50%);
++  z-index:2;
++  padding:2px 8px;
++  border:1px solid rgba(200,155,60,.34);
++  border-radius:999px;
++  background:#fffaf0;
++  color:#8a641b;
++  font-size:10px;
++  font-weight:850;
++  letter-spacing:.03em;
++}
++
++.person{
++  min-width:var(--tree-node-width);
++  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
++}
++
++.person:hover,
++.person:focus-visible{
++  transform:translateY(-2px);
++}
++
++.union:not(.single) .person.partner-2,
++.union:not(.single) .person.female{
++  border-color:rgba(225,29,72,.32);
++  background:linear-gradient(180deg,#fff,var(--spouse-soft));
++  box-shadow:0 8px 18px rgba(225,29,72,.08);
++}
++
++.union:not(.single) .person.partner-2::after,
++.union:not(.single) .person.female::after{
++  content:"Turmush o‘rtoq";
++  position:absolute;
++  top:-9px;
++  right:10px;
++  padding:2px 7px;
++  border-radius:999px;
++  background:var(--spouse-strong);
++  color:#fff;
++  font-size:9px;
++  font-weight:850;
++  line-height:1.35;
++  box-shadow:0 5px 12px rgba(225,29,72,.22);
++}
++
++.child-order{
++  position:absolute;
++  top:-10px;
++  left:-10px;
++  z-index:3;
++  display:grid;
++  place-items:center;
++  width:28px;
++  height:28px;
++  border:2px solid #fff;
++  border-radius:50%;
++  background:linear-gradient(135deg,var(--primary),var(--primary-dark));
++  color:#fff;
++  font-size:12px;
++  font-weight:900;
++  box-shadow:0 8px 18px rgba(47,107,79,.22);
++}
++
++.pz-outer{
++  background:
++    linear-gradient(90deg,rgba(47,107,79,.07) 1px,transparent 1px) 0 0/56px 56px,
++    linear-gradient(0deg,rgba(47,107,79,.07) 1px,transparent 1px) 0 0/56px 56px,
++    radial-gradient(circle at 1px 1px,rgba(200,155,60,.20) 1.1px,transparent 0) 0 0/28px 28px,
++    linear-gradient(180deg,#fffdf8,#f4efe4);
++}
++
++@media (max-width:640px){
++  :root{--tree-node-width:118px;--tree-node-gap:8px}
++  .tree{padding:38px 30px 66px;min-width:max(760px, max-content)}
++  .tree ul{padding-top:30px}
++  .tree li{padding-top:30px}
++  .tree li::before,.tree li::after,.tree ul ul::before,.tree li > ul::before{height:30px}
++  .child-order{width:24px;height:24px;font-size:11px;top:-8px;left:-8px}
++  .union:not(.single)::after{display:none}
++  .union:not(.single) .person.partner-2::after,
++  .union:not(.single) .person.female::after{display:none}
++}
