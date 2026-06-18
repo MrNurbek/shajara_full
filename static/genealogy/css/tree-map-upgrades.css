@@ -1,0 +1,192 @@
+:root{
+  --tree-node-width:164px;
+  --tree-node-gap:16px;
+  --tree-branch-1:#2f6b4f;
+  --tree-branch-2:#c89b3c;
+  --tree-branch-3:#5b6ee1;
+  --tree-branch-4:#c05a8a;
+  --spouse-soft:#fff1f2;
+  --spouse-strong:#e11d48;
+}
+
+/* Katta shajara xaritasida float asosidagi chiziqlar siljib ketmasligi uchun
+   daraxt qatlamini flex sxemaga o‘tkazamiz. HTML rekursiyasi o‘zgarmaydi. */
+.tree{
+  min-width:max(920px, max-content);
+  padding:64px 72px 88px;
+  white-space:nowrap;
+}
+
+.tree ul{
+  position:relative;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  gap:0;
+  width:max-content;
+  min-width:100%;
+  margin:0 auto;
+  padding:38px 0 0;
+}
+
+.tree > ul{
+  padding-top:0;
+}
+
+.tree li{
+  --branch-color:var(--line-strong);
+  position:relative;
+  float:none;
+  display:flex;
+  flex:0 0 auto;
+  flex-direction:column;
+  align-items:center;
+  min-width:calc(var(--tree-node-width) + var(--tree-node-gap) * 2);
+  list-style:none;
+  text-align:center;
+  padding:38px var(--tree-node-gap) 0;
+}
+
+.tree li::before,
+.tree li::after{
+  content:"";
+  position:absolute;
+  top:0;
+  width:50%;
+  height:38px;
+  border-top:2px solid var(--branch-color);
+  opacity:.86;
+}
+
+.tree li::before{
+  right:50%;
+}
+
+.tree li::after{
+  right:auto;
+  left:50%;
+  border-left:2px solid var(--branch-color);
+}
+
+.tree li:first-child::before,
+.tree li:last-child::after{
+  border:0;
+}
+
+.tree li:last-child::before{
+  border-right:2px solid var(--branch-color);
+  border-radius:0 14px 0 0;
+}
+
+.tree li:first-child::after{
+  border-radius:14px 0 0 0;
+}
+
+.tree li:only-child{
+  padding-top:0;
+}
+
+.tree li:only-child::before,
+.tree li:only-child::after,
+.tree > ul::before{
+  display:none;
+}
+
+.tree ul ul::before,
+.tree li > ul::before{
+  content:"";
+  position:absolute;
+  top:0;
+  left:50%;
+  width:0;
+  height:38px;
+  border-left:2px solid var(--branch-color);
+  opacity:.9;
+}
+
+.tree > ul > li{--branch-color:var(--tree-branch-1)}
+.tree > ul > li > ul > li{--branch-color:var(--tree-branch-2)}
+.tree > ul > li > ul > li > ul > li{--branch-color:var(--tree-branch-3)}
+.tree > ul > li > ul > li > ul > li > ul > li{--branch-color:var(--tree-branch-4)}
+.tree > ul > li > ul > li > ul > li > ul > li > ul > li{--branch-color:var(--tree-branch-1)}
+
+.tree li:nth-child(4n+1){--branch-color:var(--tree-branch-1)}
+.tree li:nth-child(4n+2){--branch-color:var(--tree-branch-2)}
+.tree li:nth-child(4n+3){--branch-color:var(--tree-branch-3)}
+.tree li:nth-child(4n+4){--branch-color:var(--tree-branch-4)}
+
+.union{
+  isolation:isolate;
+  border-color:rgba(47,107,79,.12);
+  background:linear-gradient(150deg,rgba(255,255,255,.97),rgba(255,252,243,.92));
+  box-shadow:0 12px 36px rgba(47,107,79,.07),0 2px 8px rgba(0,0,0,.04);
+}
+
+.union::before{
+  width:28px;
+  height:4px;
+  border-radius:2px;
+  background:linear-gradient(90deg,var(--tree-branch-1),var(--gold));
+  opacity:.85;
+}
+
+.union:not(.single)::after{
+  display:none;
+}
+
+.person{
+  min-width:var(--tree-node-width);
+  min-height:100px;
+  border-radius:22px;
+  transition:transform .2s cubic-bezier(.34,1.4,.64,1), box-shadow .18s ease, border-color .16s ease;
+}
+
+.person:hover,
+.person:focus-visible{
+  transform:translateY(-4px) scale(1.02);
+  box-shadow:0 14px 36px rgba(47,107,79,.15),0 4px 10px rgba(0,0,0,.06);
+}
+
+.union:not(.single) .person.female{
+  border-color:rgba(225,29,72,.24);
+  background:linear-gradient(155deg,#fff9fa,#ffedf1);
+  box-shadow:0 6px 20px rgba(225,29,72,.09);
+}
+
+.child-order{
+  position:absolute;
+  top:-11px;
+  left:-11px;
+  z-index:3;
+  display:grid;
+  place-items:center;
+  width:27px;
+  height:27px;
+  border:2.5px solid #fff;
+  border-radius:50%;
+  background:linear-gradient(135deg,#34a06a,var(--primary-dark));
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:-.5px;
+  box-shadow:0 4px 14px rgba(47,107,79,.32);
+}
+
+.pz-outer{
+  background:
+    linear-gradient(90deg,rgba(47,107,79,.055) 1px,transparent 1px) 0 0/60px 60px,
+    linear-gradient(0deg,rgba(47,107,79,.055) 1px,transparent 1px) 0 0/60px 60px,
+    radial-gradient(circle at 1px 1px,rgba(200,155,60,.18) 1.2px,transparent 0) 0 0/30px 30px,
+    linear-gradient(160deg,#fffef9 0%,#f8f3e8 100%);
+}
+
+@media (max-width:640px){
+  :root{--tree-node-width:118px;--tree-node-gap:8px}
+  .tree{padding:38px 30px 66px;min-width:max(760px, max-content)}
+  .tree ul{padding-top:30px}
+  .tree li{padding-top:30px}
+  .tree li::before,.tree li::after,.tree ul ul::before,.tree li > ul::before{height:30px}
+  .child-order{width:24px;height:24px;font-size:11px;top:-8px;left:-8px}
+  .union:not(.single)::after{display:none}
+  .union:not(.single) .person.female::after{display:none}
+}

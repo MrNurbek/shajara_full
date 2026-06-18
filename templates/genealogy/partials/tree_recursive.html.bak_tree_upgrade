@@ -1,0 +1,45 @@
+{% if node.type == "root" %}
+  <ul>
+    {% for child in node.children %}
+      <li>{% include "genealogy/partials/tree_recursive.html" with node=child only %}</li>
+    {% empty %}
+      <li><div class="empty-state">Hozircha shajara ma’lumotlari kiritilmagan.</div></li>
+    {% endfor %}
+  </ul>
+{% elif node.type == "union" %}
+  <div class="union" aria-label="Nikoh bloki">
+    {% for p in node.partners %}
+      <button class="person {% if p.gender == 'M' %}male{% elif p.gender == 'F' %}female{% else %}unknown{% endif %}{% if p.is_deceased %} deceased{% endif %}"
+              type="button" data-id="{{ p.id }}" aria-label="{{ p.name }} profilini ochish">
+        <span class="avatar-mini" aria-hidden="true">{{ p.name|first }}</span>
+        <span class="name">{{ p.name }}</span>
+        <span class="meta">{% if p.birth_year %}{{ p.birth_year }}{% endif %}–{% if p.death_year %}{{ p.death_year }}{% endif %}</span>
+      </button>
+    {% endfor %}
+  </div>
+  {% if node.children %}
+    <ul>
+      {% for child in node.children %}
+        <li>{% include "genealogy/partials/tree_recursive.html" with node=child only %}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% elif node.type == "single" %}
+  {% with p=node.person %}
+    <div class="union single" aria-label="Yakka shaxs bloki">
+      <button class="person {% if p.gender == 'M' %}male{% elif p.gender == 'F' %}female{% else %}unknown{% endif %}{% if p.is_deceased %} deceased{% endif %}"
+              type="button" data-id="{{ p.id }}" aria-label="{{ p.name }} profilini ochish">
+        <span class="avatar-mini" aria-hidden="true">{{ p.name|first }}</span>
+        <span class="name">{{ p.name }}</span>
+        <span class="meta">{% if p.birth_year %}{{ p.birth_year }}{% endif %}–{% if p.death_year %}{{ p.death_year }}{% endif %}</span>
+      </button>
+    </div>
+  {% endwith %}
+  {% if node.children %}
+    <ul>
+      {% for child in node.children %}
+        <li>{% include "genealogy/partials/tree_recursive.html" with node=child only %}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endif %}
