@@ -80,18 +80,46 @@ def build_from_person(
         person_path = set()
 
     pid = str(person.id)
-    node: dict[str, Any] = {"type": "single", "person": person_mini(person), "children": []}
 
     if max_depth <= 0:
-        node["truncated"] = True
-        return node
+        return {"type": "single", "person": person_mini(person), "children": [], "truncated": True}
     if pid in person_path:
-        node["cycle"] = True
-        return node
+        return {"type": "single", "person": person_mini(person), "children": [], "cycle": True}
 
     next_path = {*person_path, pid}
 
-    for marriage in marriages_of(person):
+    # Nikohni asosiy tugun sifatida ko'rsatish (er va xotin yonma-yon)
+    main_node: dict[str, Any] | None = None
+    remaining_marriages: list[Marriage] = []
+
+    all_marriages = list(marriages_of(person))
+    for i, marriage in enumerate(all_marriages):
+        if str(marriage.id) not in seen_marriages:
+            main_node = build_from_marriage(
+                marriage,
+                seen_marriages=seen_marriages,
+                person_path=next_path,
+                max_depth=max_depth - 1,
+            )
+            remaining_marriages = all_marriages[i + 1:]
+            break
+
+    if main_node is None:
+        # Nikohi yo'q yoki hammasi ko'rilgan — yakka tugun
+        node: dict[str, Any] = {"type": "single", "person": person_mini(person), "children": []}
+        for birth_order, child in enumerate(children_of_single_parent(person), start=1):
+            child_node = build_from_person(
+                child,
+                seen_marriages=seen_marriages,
+                person_path=next_path,
+                max_depth=max_depth - 1,
+            )
+            child_node["birth_order"] = birth_order
+            node["children"].append(child_node)
+        return node
+
+    # Qolgan nikohlarni farzand sifatida qo'shish
+    for marriage in remaining_marriages:
         marriage_node = build_from_marriage(
             marriage,
             seen_marriages=seen_marriages,
@@ -99,19 +127,19 @@ def build_from_person(
             max_depth=max_depth - 1,
         )
         if marriage_node:
-            node["children"].append(marriage_node)
+            main_node["children"].append(marriage_node)
 
-    for birth_order, child in enumerate(children_of_single_parent(person), start=1):
+    # Yakka ota/onadan tug'ilgan farzandlarni qo'shish
+    for child in children_of_single_parent(person):
         child_node = build_from_person(
             child,
             seen_marriages=seen_marriages,
             person_path=next_path,
             max_depth=max_depth - 1,
         )
-        child_node["birth_order"] = birth_order
-        node["children"].append(child_node)
+        main_node["children"].append(child_node)
 
-    return node
+    return main_node
 
 
 def build_from_marriage(
